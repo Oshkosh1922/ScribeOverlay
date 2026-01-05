@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "ScribeOverlay",
+  "version": "0.1.0",
+  "description": "Explain any highlighted text with a premium overlay.",
+  "permissions": ["storage", "contextMenus", "scripting", "activeTab"],
+  "host_permissions": ["http://localhost:3000/*"],
+  "background": {
+    "service_worker": "dist/background.js",
+    "type": "module"
+  },
+  "commands": {
+    "open-explain": {
+      "suggested_key": { "default": "Ctrl+Shift+E", "mac": "Command+Shift+E" },
+      "description": "Explain selection"
+    }
+  },
+  "options_page": "options.html",
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["dist/contentScript.js"],
+      "run_at": "document_end"
+    }
+  ],
+  "icons": {
+    "128": "icon-128.png"
+  }
+}

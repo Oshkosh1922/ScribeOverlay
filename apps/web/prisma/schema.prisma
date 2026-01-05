@@ -1,0 +1,177 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Plan {
+  free
+  pro
+  team
+}
+
+enum Role {
+  owner
+  admin
+  member
+}
+
+enum SubscriptionStatus {
+  active
+  past_due
+  canceled
+  incomplete
+}
+
+model User {
+  id                   String       @id @default(cuid())
+  email                String       @unique
+  name                 String?
+  image                String?
+  hashedPassword       String?
+  defaultWorkspaceId   String?
+  defaultWorkspace     Workspace?   @relation("DefaultWorkspace", fields: [defaultWorkspaceId], references: [id])
+  memberships          Membership[]
+  explanations         Explanation[]
+  usageEvents          UsageEvent[]
+  subscriptions        Subscription[]
+  invites              Invite[]
+  pairingCodes         PairingCode[]
+  accounts             Account[]
+  sessions             Session[]
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+}
+
+model Workspace {
+  id            String          @id @default(cuid())
+  name          String
+  plan          Plan            @default(free)
+  members       Membership[]
+  explanations  Explanation[]
+  usageEvents   UsageEvent[]
+  subscriptions Subscription[]
+  invites       Invite[]
+  pairingCodes  PairingCode[]
+  defaultOf     User[]         @relation("DefaultWorkspace")
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+}
+
+model Membership {
+  id           String    @id @default(cuid())
+  role         Role      @default(member)
+  userId       String
+  workspaceId  String
+  user         User      @relation(fields: [userId], references: [id])
+  workspace    Workspace @relation(fields: [workspaceId], references: [id])
+
+  @@unique([userId, workspaceId])
+}
+
+model Explanation {
+  id              String      @id @default(cuid())
+  userId          String
+  workspaceId     String?
+  mode            String
+  contextLevel    String
+  metadata        Json?
+  textHash        String?
+  contentEncrypted String?
+  responseJson    Json?
+  createdAt       DateTime    @default(now())
+  user            User        @relation(fields: [userId], references: [id])
+  workspace       Workspace?  @relation(fields: [workspaceId], references: [id])
+}
+
+model UsageEvent {
+  id          String      @id @default(cuid())
+  userId      String
+  workspaceId String?
+  tokensIn    Int
+  tokensOut   Int
+  model       String
+  domain      String?
+  createdAt   DateTime    @default(now())
+  user        User        @relation(fields: [userId], references: [id])
+  workspace   Workspace?  @relation(fields: [workspaceId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([workspaceId, createdAt])
+}
+
+model Subscription {
+  id                String             @id @default(cuid())
+  userId            String?
+  workspaceId       String?
+  plan              Plan               @default(free)
+  stripeCustomerId  String?
+  stripeSubscriptionId String?
+  status            SubscriptionStatus @default(active)
+  currentPeriodEnd  DateTime?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  user              User?              @relation(fields: [userId], references: [id])
+  workspace         Workspace?         @relation(fields: [workspaceId], references: [id])
+}
+
+model Invite {
+  id           String    @id @default(cuid())
+  email        String
+  code         String    @unique
+  workspaceId  String
+  status       String    @default("pending")
+  expiresAt    DateTime
+  createdAt    DateTime  @default(now())
+  workspace    Workspace @relation(fields: [workspaceId], references: [id])
+  userId       String?
+  user         User?     @relation(fields: [userId], references: [id])
+}
+
+model PairingCode {
+  id          String    @id @default(cuid())
+  code        String    @unique
+  userId      String
+  workspaceId String?
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id])
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id])
+}
+
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String? @db.Text
+  access_token       String? @db.Text
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String? @db.Text
+  session_state      String?
+  user               User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}

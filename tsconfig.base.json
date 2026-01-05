@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ES2021",
+    "lib": ["DOM", "DOM.Iterable", "ES2021"],
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": "./",
+    "paths": {
+      "@scribeoverlay/shared": ["packages/shared/src"],
+      "@scribeoverlay/shared/*": ["packages/shared/src/*"],
+      "@scribeoverlay/ui": ["packages/ui/src"],
+      "@scribeoverlay/ui/*": ["packages/ui/src/*"]
+    }
+  }
+}

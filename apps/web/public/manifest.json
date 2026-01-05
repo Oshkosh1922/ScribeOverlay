@@ -1,0 +1,43 @@
+{
+  "name": "ScribeOverlay",
+  "short_name": "Scribe",
+  "description": "Instantly explain any text with AI",
+  "start_url": "/explain",
+  "display": "standalone",
+  "background_color": "#0f0f1e",
+  "theme_color": "#7c3aed",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "share_target": {
+    "action": "/explain",
+    "method": "GET",
+    "params": {
+      "text": "text",
+      "title": "title",
+      "url": "url"
+    }
+  },
+  "categories": ["productivity", "utilities"],
+  "shortcuts": [
+    {
+      "name": "Explain Text",
+      "short_name": "Explain",
+      "description": "Paste text to explain",
+      "url": "/explain",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

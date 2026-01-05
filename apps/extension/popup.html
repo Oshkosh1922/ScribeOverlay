@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>ScribeOverlay</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: system-ui, -apple-system, sans-serif;
+        background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+        color: #e2e8f0;
+        width: 320px;
+        min-height: 200px;
+        padding: 0;
+      }
+      .container {
+        padding: 20px;
+      }
+      .header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+      }
+      .header img {
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+      }
+      .header h1 {
+        font-size: 16px;
+        font-weight: 600;
+      }
+      
+      /* Not connected state */
+      .connect-section {
+        display: block;
+      }
+      .connect-section.hidden {
+        display: none;
+      }
+      .connect-section p {
+        font-size: 13px;
+        color: #94a3b8;
+        margin-bottom: 12px;
+        line-height: 1.5;
+      }
+      .code-input {
+        width: 100%;
+        padding: 12px 14px;
+        font-size: 18px;
+        font-family: ui-monospace, monospace;
+        letter-spacing: 0.3em;
+        text-align: center;
+        text-transform: uppercase;
+        border-radius: 8px;
+        border: 1px solid #374151;
+        background: rgba(0,0,0,0.3);
+        color: #fff;
+        outline: none;
+        transition: border-color 0.2s, box-shadow 0.2s;
+      }
+      .code-input:focus {
+        border-color: #7c3aed;
+        box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2);
+      }
+      .code-input::placeholder {
+        color: #4b5563;
+        letter-spacing: 0.2em;
+      }
+      .btn {
+        width: 100%;
+        margin-top: 12px;
+        padding: 12px;
+        font-size: 14px;
+        font-weight: 600;
+        border-radius: 8px;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .btn-primary {
+        background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+        color: white;
+      }
+      .btn-primary:hover {
+        background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        transform: translateY(-1px);
+      }
+      .btn-primary:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+      }
+      .btn-secondary {
+        background: rgba(255,255,255,0.1);
+        color: #e2e8f0;
+        margin-top: 8px;
+      }
+      .btn-secondary:hover {
+        background: rgba(255,255,255,0.15);
+      }
+      .status {
+        margin-top: 12px;
+        padding: 10px 12px;
+        font-size: 13px;
+        border-radius: 6px;
+        display: none;
+      }
+      .status.show {
+        display: block;
+      }
+      .status.error {
+        background: rgba(239, 68, 68, 0.15);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        color: #fca5a5;
+      }
+      .status.success {
+        background: rgba(34, 197, 94, 0.15);
+        border: 1px solid rgba(34, 197, 94, 0.3);
+        color: #86efac;
+      }
+      .status.loading {
+        background: rgba(124, 58, 237, 0.15);
+        border: 1px solid rgba(124, 58, 237, 0.3);
+        color: #c4b5fd;
+      }
+      
+      /* Connected state */
+      .connected-section {
+        display: none;
+        text-align: center;
+      }
+      .connected-section.show {
+        display: block;
+      }
+      .connected-icon {
+        width: 48px;
+        height: 48px;
+        margin: 0 auto 12px;
+        background: rgba(34, 197, 94, 0.2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+      }
+      .connected-section h2 {
+        font-size: 16px;
+        margin-bottom: 4px;
+      }
+      .connected-section .email {
+        font-size: 13px;
+        color: #94a3b8;
+        margin-bottom: 16px;
+      }
+      .connected-section .hint {
+        font-size: 12px;
+        color: #64748b;
+        margin-top: 12px;
+        padding: 10px;
+        background: rgba(0,0,0,0.2);
+        border-radius: 6px;
+      }
+      .connected-section .hint kbd {
+        background: rgba(255,255,255,0.1);
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-family: ui-monospace, monospace;
+        font-size: 11px;
+      }
+      .btn-disconnect {
+        background: rgba(239, 68, 68, 0.15);
+        color: #fca5a5;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+      }
+      .btn-disconnect:hover {
+        background: rgba(239, 68, 68, 0.25);
+      }
+      
+      .link {
+        display: block;
+        text-align: center;
+        margin-top: 12px;
+        font-size: 12px;
+        color: #7c3aed;
+        text-decoration: none;
+      }
+      .link:hover {
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <img src="icon-128.png" alt="ScribeOverlay" />
+        <h1>ScribeOverlay</h1>
+      </div>
+      
+      <!-- Not connected -->
+      <div class="connect-section" id="connectSection">
+        <p>Enter the pairing code from your dashboard to connect this extension to your account.</p>
+        <input 
+          type="text" 
+          id="codeInput" 
+          class="code-input" 
+          maxlength="6" 
+          placeholder="ABC123"
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <button class="btn btn-primary" id="pairBtn">Connect</button>
+        <a href="http://localhost:3000/connect" target="_blank" class="link">Get a pairing code →</a>
+        <div class="status" id="status"></div>
+      </div>
+      
+      <!-- Connected -->
+      <div class="connected-section" id="connectedSection">
+        <div class="connected-icon">✓</div>
+        <h2>Connected</h2>
+        <p class="email" id="userEmail">Loading...</p>
+        <div class="hint">
+          Highlight text and press <kbd>⌘</kbd> + <kbd>Shift</kbd> + <kbd>E</kbd> to explain
+        </div>
+        <button class="btn btn-disconnect" id="disconnectBtn">Disconnect</button>
+      </div>
+    </div>
+    
+    <script src="popup.js"></script>
+  </body>
+</html>

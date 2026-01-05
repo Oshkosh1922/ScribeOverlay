@@ -1,0 +1,42 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>ScribeOverlay – Connect</title>
+    <style>
+      body { font-family: system-ui, sans-serif; background: #0f172a; color: #e2e8f0; padding: 24px; }
+      .card { max-width: 480px; margin: 0 auto; background: #111827; border: 1px solid #1f2937; border-radius: 12px; padding: 20px; box-shadow: 0 20px 70px rgba(0,0,0,0.45); }
+      input { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #1f2937; background: #0b1223; color: #e2e8f0; }
+      button { margin-top: 12px; width: 100%; padding: 10px; border-radius: 8px; border: none; background: #7c3aed; color: white; font-weight: 600; cursor: pointer; }
+      button:hover { background: #5b21b6; }
+      .status { margin-top: 10px; font-size: 14px; color: #cbd5e1; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h2>Connect extension</h2>
+      <p>Enter the 6-digit pairing code from the web dashboard.</p>
+      <input id="code" maxlength="6" placeholder="123456" />
+      <button id="connect">Pair</button>
+      <div class="status" id="status"></div>
+    </div>
+    <script>
+      const API_BASE = 'http://localhost:3000';
+      document.getElementById('connect').addEventListener('click', async () => {
+        const code = (document.getElementById('code').value || '').trim();
+        const statusEl = document.getElementById('status');
+        statusEl.textContent = 'Pairing…';
+        try {
+          const res = await fetch(`${API_BASE}/api/extension/pair`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code }) });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Failed');
+          chrome.storage.sync.set({ sessionToken: data.token }, () => {
+            statusEl.textContent = 'Paired successfully. You can close this tab.';
+          });
+        } catch (err) {
+          statusEl.textContent = 'Error: ' + err.message;
+        }
+      });
+    </script>
+  </body>
+</html>
