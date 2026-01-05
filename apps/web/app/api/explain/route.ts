@@ -8,8 +8,55 @@ import { redact, hashText } from "@scribeoverlay/shared";
 import { authOptions } from "../../../lib/auth";
 
 const apiKey = process.env.OPENAI_API_KEY;
+const tavilyKey = process.env.TAVILY_API_KEY;
 const isDemoMode = !apiKey || apiKey === "sk-placeholder" || apiKey.length < 20;
 const openai = isDemoMode ? null : new OpenAI({ apiKey });
+
+interface TavilySource {
+  title: string;
+  url: string;
+  content: string;
+  score: number;
+}
+
+// Search Tavily for relevant sources
+async function searchTavily(query: string): Promise<TavilySource[]> {
+  if (!tavilyKey) return [];
+  
+  try {
+    // Extract key terms from the text (first 200 chars for search query)
+    const searchQuery = query.slice(0, 400).replace(/[^\w\s]/g, ' ').trim();
+    
+    const res = await fetch('https://api.tavily.com/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        api_key: tavilyKey,
+        query: searchQuery,
+        search_depth: 'basic',
+        include_answer: false,
+        include_raw_content: false,
+        max_results: 5
+      })
+    });
+    
+    if (!res.ok) {
+      console.error('[Tavily] Search failed:', res.status);
+      return [];
+    }
+    
+    const data = await res.json();
+    return (data.results || []).map((r: any) => ({
+      title: r.title || 'Untitled',
+      url: r.url,
+      content: r.content?.slice(0, 300) || '',
+      score: r.score || 0
+    }));
+  } catch (e) {
+    console.error('[Tavily] Error:', e);
+    return [];
+  }
+}
 
 const SYSTEM_PROMPT = `You are an expert analyst who helps people understand complex text. Your job is to thoroughly explain what they're reading in a clear, intelligent way.
 
@@ -34,7 +81,8 @@ Guidelines:
 - Be direct and insightful, not generic
 - If something is questionable, say so clearly
 - Focus on what actually matters to the reader
-- Don't pad with filler content`;
+- Don't pad with filler content
+- When sources are provided, reference them to support your analysis`;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -77,7 +125,8 @@ export async function POST(req: Request) {
       context: "ScribeOverlay uses GPT-4 to analyze text and provide clear explanations.",
       implications: "Once configured with an API key, you'll get thorough explanations of any text you select.",
       criticalAnalysis: "This is placeholder content for testing purposes.",
-      bottomLine: "Add your OpenAI API key to unlock the full experience."
+      bottomLine: "Add your OpenAI API key to unlock the full experience.",
+      sources: []
     };
     
     const stream = new ReadableStream({
@@ -93,6 +142,17 @@ export async function POST(req: Request) {
     });
   }
 
+  // Search for relevant sources with Tavily
+  const sources = await searchTavily(redacted);
+  
+  // Build context from sources
+  let sourcesContext = "";
+  if (sources.length > 0) {
+    sourcesContext = "\n\nRelevant sources found:\n" + sources.map((s, i) => 
+      `[${i + 1}] ${s.title}\nURL: ${s.url}\nExcerpt: ${s.content}`
+    ).join("\n\n");
+  }
+
   const stream = new ReadableStream({
     async start(controller) {
       let collected = "";
@@ -104,7 +164,7 @@ export async function POST(req: Request) {
           max_tokens: 2000,
           messages: [
             { role: "system", content: SYSTEM_PROMPT },
-            { role: "user", content: `Analyze this text:\n\n${redacted}` }
+            { role: "user", content: `Analyze this text:\n\n${redacted}${sourcesContext}` }
           ]
         });
 
@@ -125,7 +185,12 @@ export async function POST(req: Request) {
           }
         } catch {}
 
-        controller.enqueue(`event: done\ndata: ${JSON.stringify({ json: parsedJson, textHash })}\n\n`);
+        // Add sources to the response
+        if (parsedJson) {
+          parsedJson.sources = sources.map(s => ({ title: s.title, url: s.url }));
+        }
+
+        controller.enqueue(`event: done\ndata: ${JSON.stringify({ json: parsedJson, textHash, sources })}\n\n`);
         controller.close();
 
         // Save to database

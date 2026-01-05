@@ -6,6 +6,7 @@ function ExplainContent() {
   const searchParams = useSearchParams();
   const [text, setText] = useState("");
   const [response, setResponse] = useState<any>(null);
+  const [sources, setSources] = useState<{title: string, url: string}[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -19,6 +20,7 @@ function ExplainContent() {
     setLoading(true);
     setError("");
     setResponse(null);
+    setSources([]);
 
     try {
       const res = await fetch("/api/explain", {
@@ -37,6 +39,7 @@ function ExplainContent() {
       const decoder = new TextDecoder();
       let jsonStr = "";
       let finalJson: any = null;
+      let receivedSources: any[] = [];
 
       if (reader) {
         let buffer = "";
@@ -55,6 +58,7 @@ function ExplainContent() {
                 try {
                   const donePayload = JSON.parse(payload);
                   if (donePayload.json) finalJson = donePayload.json;
+                  if (donePayload.sources) receivedSources = donePayload.sources;
                 } catch {}
               } else {
                 jsonStr += payload;
@@ -66,12 +70,15 @@ function ExplainContent() {
 
       if (finalJson) {
         setResponse(finalJson);
+        setSources(finalJson.sources || receivedSources);
       } else if (jsonStr) {
         const start = jsonStr.indexOf("{");
         const end = jsonStr.lastIndexOf("}");
         if (start >= 0 && end > start) {
           try {
-            setResponse(JSON.parse(jsonStr.slice(start, end + 1)));
+            const parsed = JSON.parse(jsonStr.slice(start, end + 1));
+            setResponse(parsed);
+            setSources(parsed.sources || receivedSources);
           } catch {
             setResponse({ raw: jsonStr });
           }
@@ -128,7 +135,7 @@ function ExplainContent() {
               {loading ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Analyzing...
+                  Searching & analyzing...
                 </>
               ) : (
                 "Analyze"
@@ -145,12 +152,12 @@ function ExplainContent() {
         )}
 
         {/* Results */}
-        {response && <ResponseDisplay data={response} />}
+        {response && <ResponseDisplay data={response} sources={sources} />}
 
         {/* Empty state */}
         {!response && !loading && (
           <div className="text-center py-16">
-            <p className="text-white/30 text-sm">Paste text above to get a clear explanation</p>
+            <p className="text-white/30 text-sm">Paste text above to get a clear explanation with sources</p>
           </div>
         )}
       </div>
@@ -158,7 +165,7 @@ function ExplainContent() {
   );
 }
 
-function ResponseDisplay({ data }: { data: any }) {
+function ResponseDisplay({ data, sources }: { data: any; sources: {title: string, url: string}[] }) {
   if (data.raw) {
     return (
       <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-5">
@@ -224,8 +231,39 @@ function ResponseDisplay({ data }: { data: any }) {
           </div>
         </Section>
       )}
+
+      {/* Sources - NEW */}
+      {sources && sources.length > 0 && (
+        <Section label="Sources">
+          <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-4">
+            <ul className="space-y-2">
+              {sources.map((source, i) => (
+                <li key={i}>
+                  <a 
+                    href={source.url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="block p-3 bg-indigo-500/10 hover:bg-indigo-500/20 rounded-lg transition-colors"
+                  >
+                    <span className="text-indigo-200 text-sm font-medium">{source.title}</span>
+                    <span className="block text-indigo-400/60 text-xs mt-1 truncate">{getDomain(source.url)}</span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </Section>
+      )}
     </div>
   );
+}
+
+function getDomain(url: string): string {
+  try {
+    return new URL(url).hostname.replace('www.', '');
+  } catch {
+    return url;
+  }
 }
 
 function Section({ label, children }: { label: string; children: React.ReactNode }) {
